@@ -26,9 +26,11 @@ use kartik\base\Config;
  */
 class DynaGridStore extends Object
 {
+
     const STORE_GRID = 'grid';
     const STORE_FILTER = 'filter';
     const STORE_SORT = 'sort';
+    const STORE_SAVED = 'saved';
 
     /**
      * @var string the category of data to store
@@ -116,7 +118,6 @@ class DynaGridStore extends Object
         if (!$this->_isMaster) {
             $this->_dtlKey = empty($this->dtlKey) ? $this->generateKey(false) : $this->dtlKey;
         }
-
     }
 
     /**
@@ -466,4 +467,5 @@ class DynaGridStore extends Object
         }
         return $data;
     }
+
 }

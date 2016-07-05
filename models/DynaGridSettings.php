@@ -33,6 +33,7 @@ class DynaGridSettings extends Model
     public $name;
     public $dynaGridId;
     public $editId;
+    public $savedId;
     public $key;
     public $data;
     protected $_module;
@@ -52,7 +53,7 @@ class DynaGridSettings extends Model
     public function rules()
     {
         return [
-            [['id', 'category', 'storage', 'userSpecific', 'name', 'dynaGridId', 'editId', 'key', 'data'], 'safe'],
+            [['id', 'category', 'storage', 'userSpecific', 'name', 'dynaGridId', 'editId', 'savedId', 'key', 'data'], 'safe'],
             [['name'], 'required'],
         ];
     }
@@ -95,7 +96,24 @@ class DynaGridSettings extends Model
         if (isset($this->id) && !empty($this->id)) {
             $settings['dtlKey'] = $this->id;
         }
+
         return new DynaGridStore($settings);
+    }
+
+    public function saveGrid($data)
+    {
+        $settings = [
+            'id' => $this->dynaGridId,
+            'name' => $this->name,
+            'category' => 'saved',
+            'storage' => $this->storage,
+            'userSpecific' => $this->userSpecific
+        ];
+        if (isset($this->id) && !empty($this->id)) {
+            $settings['dtlKey'] = $this->id;
+        }
+        $model = new DynaGridStore($settings);
+        $model->save($data);
     }
 
     /**
@@ -114,6 +132,7 @@ class DynaGridSettings extends Model
     public function saveSettings()
     {
         $this->store->save($this->data);
+
     }
 
     /**
@@ -138,6 +157,15 @@ class DynaGridSettings extends Model
     public function getDtlList()
     {
         return $this->store->getDtlList($this->category);
+    }
+
+    /**
+     * Gets saved grids
+     * @return string
+     */
+    public function getSavedConfig()
+    {
+        return $this->store->fetch();
     }
 
     /**
@@ -169,6 +197,7 @@ class DynaGridSettings extends Model
             }
             foreach ($data as $attribute => $value) {
                 $label = isset($attribute['label']) ? $attribute['label'] : Inflector::camel2words($attribute);
+                $value = is_array($value) ? print_r($value, true) : $value;
                 $out .= "<li>{$label} = {$value}</li>";
             }
         } else {

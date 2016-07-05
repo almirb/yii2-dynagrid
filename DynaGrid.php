@@ -26,6 +26,7 @@ use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Inflector;
 use yii\helpers\Json;
+use yii\helpers\Url;
 
 /**
  * Enhance GridView by allowing you to dynamically edit grid configuration. The dynagrid allows you to set your own grid
@@ -522,6 +523,7 @@ class DynaGrid extends Widget
         if ($this->_isSubmit) {
             $delete = ArrayHelper::getValue($_POST, 'deleteFlag', 0) == 1;
             $this->saveGridConfig($config, $delete);
+
             Yii::$app->controller->refresh();
         } else {
             $this->loadGridConfig($config);
@@ -558,7 +560,8 @@ class DynaGrid extends Widget
             'theme' => $this->_model->theme,
             'keys' => explode(',', $_POST['visibleKeys']),
             'filter' => $this->_model->filterId,
-            'sort' => $this->_model->sortId
+            'sort' => $this->_model->sortId,
+            'savedName' => $this->_model->savedName,
         ];
     }
 
@@ -576,6 +579,15 @@ class DynaGrid extends Widget
             $this->_store->delete();
         } else {
             $this->_store->save($config);
+            if (!empty($config['savedName'])) {
+                $model=new DynaGridSettings();
+                $model->category=  DynaGridStore::STORE_SAVED;
+                $model->dynaGridId=  $this->options['id'];
+                $model->storage=  $this->storage;
+                $model->userSpecific=  $this->userSpecific;
+                $model->name=$config['savedName'];
+                $model->saveGrid($config);
+        }
         }
     }
 
@@ -1023,6 +1035,9 @@ class DynaGrid extends Widget
                     $this->_model->sortList = $store->getDtlList(DynaGridStore::STORE_SORT);
                 }
             }
+            $this->_model->savedId =  $this->_sortId;
+            $this->_model->savedList = $store->getDtlList(DynaGridStore::STORE_SAVED);
+
             $dynagrid = $this->render($this->_module->configView, [
                 'model' => $this->_model,
                 'toggleButtonGrid' => $this->toggleButtonGrid,
@@ -1121,6 +1136,7 @@ class DynaGrid extends Widget
             'submitMessage' => Html::tag('div', $this->submitMessage, $this->messageOptions),
             'deleteMessage' => Html::tag('div', $this->deleteMessage, $this->messageOptions),
             'deleteConfirmation' => $this->deleteConfirmation,
+            'configLoadUrl' => Url::to([$this->_module->settingsLoadConfigAction]),
             'modalId' => $this->_gridModalId,
             'dynaGridId' => $this->options['id']
         ]);

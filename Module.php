@@ -82,6 +82,12 @@ class Module extends \kartik\base\Module
     public $settingsConfigAction = '/dynagrid/settings/get-config';
 
     /**
+     *
+     * @var string  the action URL for load all saved config
+     */
+    public $settingsLoadConfigAction = '/dynagrid/settings/get-saved';
+    
+    /**
      * @var array the theme configuration for the gridview
      */
     public $themeConfig = [

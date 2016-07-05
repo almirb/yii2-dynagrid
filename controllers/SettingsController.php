@@ -34,4 +34,18 @@ class SettingsController extends Controller
 
         return $out;
     }
+
+    public function actionGetSaved()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        $model = new DynaGridSettings();
+        $out = ['status' => '', 'content' => ''];
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+            $out = ['status' => 'success',
+                'content' => $model->getSavedConfig(),];
+        }
+
+        return $out;
+    }
+
 }

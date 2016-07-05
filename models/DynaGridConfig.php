@@ -29,9 +29,12 @@ class DynaGridConfig extends Model
     public $themeList = [];
     public $filterList = [];
     public $sortList = [];
+    public $savedList = [];
     public $pageSize;
     public $filterId = null;
     public $sortId = null;
+    public $savedId = null;
+    public $savedName = '';
     public $hiddenKeys;
     public $visibleKeys;
     public $footer = null;
@@ -53,6 +56,8 @@ class DynaGridConfig extends Model
                     'pageSize',
                     'filterId',
                     'sortId',
+                    'savedId',
+                    'savedName',
                     'theme',
                     'hiddenKeys',
                     'visibleKeys'

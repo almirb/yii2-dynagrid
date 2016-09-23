@@ -5,7 +5,7 @@
  * @version   1.4.5
  *
  * JQuery Plugin for yii2-dynagrid.
- * 
+ *
  * Author: Kartik Visweswaran
  * Copyright: 2015, Kartik Visweswaran, Krajee.com
  * For more JQuery plugins visit http://plugins.krajee.com
@@ -14,34 +14,33 @@
 (function ($) {
     "use strict";
     var isEmpty = function (value, trim) {
-            return value === null || value === undefined || value === [] || value === '' || trim && $.trim(value) === '';
-        },
-        getFormObjectId = function ($element) {
-            return $element.attr('name').toLowerCase().replace(/-/g, '_') + '_activeform';
-        },
-        cacheActiveForm = function ($element) {
-            var $form = $element.closest('form'), objActiveForm = $form.data('yiiActiveForm'),
-                id = getFormObjectId($element);
-            if (isEmpty(id) || isEmpty(objActiveForm)) {
-                return;
-            }
-            window[id] = objActiveForm;
-        },
-        Dynagrid = function (element, options) {
-            var self = this;
-            self.$element = $(element);
-            $.each(options, function (key, value) {
-                self[key] = value;
-            });
-            self.init();
-            self.listen();
-        };
-
+        return value === null || value === undefined || value === [] || value === '' || trim && $.trim(value) === '';
+    },
+            getFormObjectId = function ($element) {
+                return $element.attr('name').toLowerCase().replace(/-/g, '_') + '_activeform';
+            },
+            cacheActiveForm = function ($element) {
+                var $form = $element.closest('form'), objActiveForm = $form.data('yiiActiveForm'),
+                        id = getFormObjectId($element);
+                if (isEmpty(id) || isEmpty(objActiveForm)) {
+                    return;
+                }
+                window[id] = objActiveForm;
+            },
+            Dynagrid = function (element, options) {
+                var self = this;
+                self.$element = $(element);
+                $.each(options, function (key, value) {
+                    self[key] = value;
+                });
+                self.init();
+                self.listen();
+            };
     Dynagrid.prototype = {
         constructor: Dynagrid,
         init: function () {
             var self = this, $modal = $('#' + self.modalId), $dynaGridId = $('#' + self.dynaGridId),
-                obj = getFormObjectId(self.$element), $form = self.$element.closest('form');
+                    obj = getFormObjectId(self.$element), $form = self.$element.closest('form');
             self.$form = $form;
             if (isEmpty(window[obj])) {
                 cacheActiveForm(self.$element);
@@ -53,6 +52,8 @@
             self.$btnSubmit = $modal.find('.dynagrid-submit');
             self.$btnDelete = $modal.find('.dynagrid-delete');
             self.$btnReset = $modal.find('.dynagrid-reset');
+            self.$btnLoad = $modal.find('.dynagrid-detail-loadgrid');
+            self.$btnSave = $modal.find('.dynagrid-detail-savegrid');
             self.$formContainer = $form.parent();
             self.setColumnKeys();
             self.visibleContent = self.$visibleEl.html();
@@ -62,6 +63,11 @@
         },
         listen: function () {
             var self = this, $form = self.$form, $formContainer = self.$formContainer;
+
+            $(".icon-visible-column :visible").each(function () {
+                console.log('this');
+                self.updateExcelColumn();
+            });
             self.$btnSubmit.off('click').on('click', function () {
                 self.setColumnKeys();
                 self.$visibleKeys.val(self.visibleKeys);
@@ -70,6 +76,56 @@
                 setTimeout(function () {
                     $form.submit();
                 }, 1000);
+            });
+            self.$btnLoad.off('click').on('click', function () {
+                $.ajax({
+                    type: 'post',
+                    url: self.configLoadUrl,
+                    dataType: 'json',
+                    data: {_csrf: $('input[name=_csrf]').val(),
+                        DynaGridSettings: {
+                            savedId: $("#dynagridconfig-savedid").val(),
+                            name: $("#dynagridconfig-savedid :selected").text(),
+                            category: "saved",
+                            storage: $('[name="DynaGridSettings[storage]"]').val(),
+                            userSpecific: $('[name="DynaGridSettings[userSpecific]"]').val(),
+                            dynaGridId: $('[name="DynaGridSettings[dynaGridId]"]').val()
+                        }
+                    },
+                    success: function (data) {
+                        if (data.status === 'success' && $.isArray(data.content.keys)) {
+                            //hide all items
+                            $(self.$visibleEl).find('li[aria-grabbed=false]').each(function () {
+                                var litem = $(this).clone(true);
+                                litem.appendTo("#" + self.$hiddenEl.attr('id'));
+                                $(this).remove();
+                            });
+                            //show items from saved
+                            $.each(data.content.keys, function (value, key) {
+                                var litem = $('#' + key).clone(true);
+                                $('#' + key).remove();
+                                litem.appendTo("#" + self.$visibleEl.attr('id'));
+                            });
+                            self.$form.find('input[name="DynaGridConfig[pageSize]"]').val(data.content.page);
+                            self.$form.find('[name="DynaGridConfig[theme]"]').val(data.content.theme).change();
+                            self.$form.find('[name="DynaGridConfig[filterId]"]').val(data.content.filterId).change();
+                            self.$form.find('[name="DynaGridConfig[sortId]"]').val(data.content.sortId).change();
+                        }
+                    }
+                });
+            });
+            self.$btnSave.off('click').on('click', function () {
+                var savedName = prompt(self.saveMessage);
+                if (savedName !== null) {
+                    self.setColumnKeys();
+                    self.$visibleKeys.val(self.visibleKeys);
+                    $form.hide();
+                    $formContainer.prepend(self.submitMessage);
+                    setTimeout(function () {
+                        $form.find('[name="DynaGridConfig[savedName]"]').val(savedName);
+                        $form.submit();
+                    }, 1000);
+                }
             });
             self.$btnDelete.off('click').on('click', function () {
                 if (!window.confirm(self.deleteConfirmation)) {
@@ -104,11 +160,10 @@
                     }
                 });
             });
-
         },
         reset: function () {
             var self = this, $form = self.$element.closest('form'),
-                id = getFormObjectId(self.$element), objActiveForm = window[id];
+                    id = getFormObjectId(self.$element), objActiveForm = window[id];
             if (!isEmpty(objActiveForm)) {
                 $form.yiiActiveForm('destroy');
                 $form.yiiActiveForm(objActiveForm.attributes, objActiveForm.settings);
@@ -135,17 +190,14 @@
             self.visibleKeys = self.$visibleEl.find('li').map(function (i, n) {
                 return $(n).attr('id');
             }).get().join(',');
-
         }
     };
-
     // dynagrid plugin definition
     $.fn.dynagrid = function (option) {
         var args = Array.apply(null, arguments);
         args.shift();
         return this.each(function () {
             var $this = $(this), data = $this.data('dynagrid'), options = typeof option === 'object' && option;
-
             if (!data) {
                 data = new Dynagrid(this, $.extend({}, $.fn.dynagrid.defaults, options, $(this).data()));
                 $this.data('dynagrid', data);
@@ -156,12 +208,13 @@
             }
         });
     };
-
     $.fn.dynagrid.defaults = {
         submitMessage: '',
+        saveMessage: 'Please type grid name',
         deleteMessage: '',
         deleteConfirmation: 'Are you sure you want to delete all your grid personalization settings?',
         modalId: '',
+        configLoadUrl: '',
         dynaGridId: ''
     };
 }(window.jQuery));

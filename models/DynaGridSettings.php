@@ -25,6 +25,7 @@ use kartik\dynagrid\DynaGridStore;
  */
 class DynaGridSettings extends Model
 {
+
     public $id;
     public $category;
     public $storage;
@@ -32,6 +33,7 @@ class DynaGridSettings extends Model
     public $name;
     public $dynaGridId;
     public $editId;
+    public $savedId;
     public $key;
     public $data;
     protected $_module;
@@ -51,7 +53,7 @@ class DynaGridSettings extends Model
     public function rules()
     {
         return [
-            [['id', 'category', 'storage', 'userSpecific', 'name', 'dynaGridId', 'editId', 'key', 'data'], 'safe'],
+            [['id', 'category', 'storage', 'userSpecific', 'name', 'dynaGridId', 'editId', 'savedId', 'key', 'data'], 'safe'],
             [['name'], 'required'],
         ];
     }
@@ -94,7 +96,24 @@ class DynaGridSettings extends Model
         if (isset($this->id) && !empty($this->id)) {
             $settings['dtlKey'] = $this->id;
         }
+
         return new DynaGridStore($settings);
+    }
+
+    public function saveGrid($data)
+    {
+        $settings = [
+            'id' => $this->dynaGridId,
+            'name' => $this->name,
+            'category' => 'saved',
+            'storage' => $this->storage,
+            'userSpecific' => $this->userSpecific
+        ];
+        if (isset($this->id) && !empty($this->id)) {
+            $settings['dtlKey'] = $this->id;
+        }
+        $model = new DynaGridStore($settings);
+        $model->save($data);
     }
 
     /**
@@ -113,6 +132,7 @@ class DynaGridSettings extends Model
     public function saveSettings()
     {
         $this->store->save($this->data);
+
     }
 
     /**
@@ -140,11 +160,20 @@ class DynaGridSettings extends Model
     }
 
     /**
+     * Gets saved grids
+     * @return string
+     */
+    public function getSavedConfig()
+    {
+        return $this->store->fetch();
+    }
+
+    /**
      * Gets data configuration
      *
      * @return string
      */
-    public function getDataConfig()
+    public function getDataConfig($onlyLink = true)
     {
         $data = $this->store->fetch();
         if (!is_array($data) || empty($data) &&
@@ -154,20 +183,40 @@ class DynaGridSettings extends Model
         }
         $attrLabel = $this->getAttributeLabel('dataConfig');
         $out = "<label>{$attrLabel}</label>\n<ul>";
+
         if ($this->category === DynaGridStore::STORE_FILTER) {
+
+            if (!$onlyLink) {
+                if (\yii::$app->urlManager->enablePrettyUrl) {
+                    return NULL; //todo: need a implementation
+                } else {
+                    preg_match("/r=(.*)/", preg_split("/\&/", Yii::$app->request->getReferrer())[0], $route); //todo: need a better solution
+                }
+
+                return Yii::$app->urlManager->createUrl([urldecode($route[1]), ucwords(preg_split('/\//', urldecode($route[1]))[0]) => $data]);
+            }
             foreach ($data as $attribute => $value) {
                 $label = isset($attribute['label']) ? $attribute['label'] : Inflector::camel2words($attribute);
+                $value = is_array($value) ? print_r($value, true) : $value;
                 $out .= "<li>{$label} = {$value}</li>";
             }
         } else {
+            $sort = [];
             foreach ($data as $attribute => $direction) {
                 $label = isset($attribute['label']) ? $attribute['label'] : Inflector::camel2words($attribute);
                 $icon = $direction === SORT_DESC ? "glyphicon glyphicon-sort-by-alphabet-alt" : "glyphicon glyphicon-sort-by-alphabet";
                 $dir = $direction === SORT_DESC ? Yii::t('kvdynagrid', 'descending') : Yii::t('kvdynagrid', 'ascending');
                 $out .= "<li>{$label} <span class='{$icon}'></span> <span class='label label-default'>{$dir}</span></li>";
+                $sort[] = ($direction === SORT_DESC) ? '-' . $attribute : $attribute;
+            }
+            if (!$onlyLink) {
+                preg_match("/r=(.*)/", preg_split("/\&/", Yii::$app->request->getReferrer())[0], $route);
+                return Yii::$app->urlManager->createUrl([urldecode($route[1]), 'sort' => implode(',', $sort),
+                        true]);
             }
         }
         $out .= "</ul>";
         return $out;
     }
+
 }
